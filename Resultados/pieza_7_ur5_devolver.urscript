@@ -1,0 +1,92 @@
+def ur5e_devolver_baldosa():
+  textmsg("=== UR5e PARTE 2: devolver baldosa ===")
+  textmsg("Ventosa: SIMULACION")
+  q_home = p[0.54216, -0.32723, 0.38191, 3.06600, -0.68500, 0.00000]
+  x_pick = -0.09657
+  y_pick = -0.75243
+  rx_pick = 2.79604
+  ry_pick = -1.43234
+  rz_pick = 0.00003
+  rx_drop = 1.96260
+  ry_drop = 2.48200
+  rz_drop = 0.00000
+
+  # Paso 1: ir al HOME y luego a recoger la baldosa de la zona compartida
+  textmsg("UR5e: yendo a HOME")
+  movej(q_home, a=0.03, v=0.8)
+  sleep(0.3)
+  movej(p[-0.04511, 0.51128, 0.29870, 1.96260, 2.48200, 0.00000], a=0.12, v=0.08)
+  sleep(0.3)
+  textmsg("UR5e recogida DROP_ZONE: detectando superficie por fuerza")
+  zero_ftsensor()
+  sleep(0.5)
+  i_f = 0
+  while (force() < 1.500 and i_f < 8000):
+    speedl([0, 0, -0.00800, 0, 0, 0], 0.15, 0.02)
+    i_f = i_f + 1
+  end
+  stopl(2.0)
+  sleep(0.2)
+  if (i_f >= 8000):
+    popup("UR5e recogida DROP_ZONE: no se detecto contacto. Revisa posicion/Z/fuerza.", error=True)
+    halt
+  end
+  z_contacto = get_actual_tcp_pose()[2]
+  z_trabajo = z_contacto + 0.00300
+  textmsg("UR5e recogida DROP_ZONE: z_contacto=", z_contacto)
+  textmsg("SIMULACION ventosa: activando vacio (ON) - pieza cogida")
+  sleep(0.40)
+
+  # Paso 2: subir y volver al HOME
+  movel(p[-0.04511, 0.51128, 0.29870, 1.96260, 2.48200, 0.00000], a=0.03, v=0.08)
+  sleep(0.2)
+  textmsg("UR5e: yendo a HOME")
+  movej(q_home, a=0.03, v=0.8)
+  sleep(0.3)
+
+  # Paso 3: ir a la posicion original de la pieza y depositarla
+  textmsg("UR5e DEVOLVER TARGET JSON x=-0.09657, y=-0.75243")
+  movej(p[x_pick, y_pick, 0.25000, rx_pick, ry_pick, rz_pick], a=0.12, v=0.125)
+  sleep(0.3)
+  textmsg("UR5e deposito original: detectando superficie por fuerza")
+  zero_ftsensor()
+  sleep(0.5)
+  i_f = 0
+  while (force() < 1.500 and i_f < 8000):
+    speedl([0, 0, -0.00800, 0, 0, 0], 0.15, 0.02)
+    i_f = i_f + 1
+  end
+  stopl(2.0)
+  sleep(0.2)
+  if (i_f >= 8000):
+    popup("UR5e deposito original: no se detecto contacto. Revisa posicion/Z/fuerza.", error=True)
+    halt
+  end
+  z_contacto = get_actual_tcp_pose()[2]
+  z_trabajo = z_contacto + 0.00300
+  textmsg("UR5e deposito original: z_contacto=", z_contacto)
+  textmsg("SIMULACION ventosa: liberando vacio (OFF) - pieza soltada")
+  sleep(0.30)
+
+  # Paso 4: retirarse y volver al HOME
+  movel(p[x_pick, y_pick, 0.25000, rx_pick, ry_pick, rz_pick], a=0.03, v=0.08)
+  sleep(0.2)
+  textmsg("UR5e: yendo a HOME")
+  movej(q_home, a=0.03, v=0.8)
+  sleep(0.3)
+
+  textmsg("UR5e: baldosa devuelta. Avisando al PC")
+  # Avisamos al PC de que esta fase ha terminado: UR5e DEVOLVER
+  socket_ok = socket_open("192.168.56.2", 50001, "sync_ur5_devuelto")
+  if (not socket_ok):
+    popup("UR5e DEVOLVER: no pudo avisar al PC", error=True)
+    halt
+  else:
+    socket_send_string("LISTO", "sync_ur5_devuelto")
+    sleep(0.2)
+    socket_close("sync_ur5_devuelto")
+    textmsg("UR5e DEVOLVER: LISTO enviado al PC")
+  end
+  textmsg("UR5e PARTE 2 finalizada")
+end
+ur5e_devolver_baldosa()

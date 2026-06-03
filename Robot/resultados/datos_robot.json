@@ -1,0 +1,106 @@
+{
+  "imagen": "DSC07665.jpg",
+  "total_piezas": 9,
+  "piezas": [
+    {
+      "numero": 1,
+      "robot_x": 160.88,
+      "robot_y": -399.15,
+      "ancho_mm": 139.7,
+      "alto_mm": 140.67,
+      "angulo_grados": -8.35
+    },
+    {
+      "numero": 2,
+      "robot_x": 220.71,
+      "robot_y": -599.7,
+      "ancho_mm": 150.07,
+      "alto_mm": 151.05,
+      "angulo_grados": 23.26
+    },
+    {
+      "numero": 3,
+      "robot_x": 112.09,
+      "robot_y": -774.31,
+      "ancho_mm": 114.09,
+      "alto_mm": 115.39,
+      "angulo_grados": -10.41
+    },
+    {
+      "numero": 4,
+      "robot_x": 6.2,
+      "robot_y": -332.1,
+      "ancho_mm": 113.77,
+      "alto_mm": 115.72,
+      "angulo_grados": -38.04
+    },
+    {
+      "numero": 5,
+      "robot_x": 1.79,
+      "robot_y": -631.91,
+      "ancho_mm": 111.18,
+      "alto_mm": 115.72,
+      "angulo_grados": -40.55
+    },
+    {
+      "numero": 6,
+      "robot_x": -90.39,
+      "robot_y": -498.33,
+      "ancho_mm": 149.43,
+      "alto_mm": 150.07,
+      "angulo_grados": -31.72
+    },
+    {
+      "numero": 7,
+      "robot_x": -96.57,
+      "robot_y": -752.43,
+      "ancho_mm": 107.29,
+      "alto_mm": 110.53,
+      "angulo_grados": 43.86
+    },
+    {
+      "numero": 8,
+      "robot_x": -204.89,
+      "robot_y": -354.29,
+      "ancho_mm": 110.53,
+      "alto_mm": 110.85,
+      "angulo_grados": -29.33
+    },
+    {
+      "numero": 9,
+      "robot_x": -242.95,
+      "robot_y": -636.79,
+      "ancho_mm": 149.43,
+      "alto_mm": 150.4,
+      "angulo_grados": -19.26
+    }
+  ],
+  "calibracion": {
+    "ref1_px": {
+      "x": 1066.0,
+      "y": 533.0
+    },
+    "ref1_robot": {
+      "x": 263.93,
+      "y": -239.43
+    },
+    "ref2_px": {
+      "x": 2872.15,
+      "y": 2461.99
+    },
+    "ref2_robot": {
+      "x": -363.6,
+      "y": -822.42
+    },
+    "escala_mm_px": 0.324133,
+    "rotacion_grados": -90.22,
+    "matriz_afin": {
+      "m11": -0.001265,
+      "m12": -0.324131,
+      "m13": 438.04,
+      "m21": -0.324131,
+      "m22": 0.001265,
+      "m23": 105.42
+    }
+  }
+}
