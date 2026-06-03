@@ -95,6 +95,31 @@ def _servidor_en_hilo(puerto: int, descripcion: str):
     return hilo, errores
 
 
+def _enviar_y_esperar_confirmacion(
+    puerto_escucha: int,
+    descripcion_escucha: str,
+    ip_robot: str,
+    puerto_robot: int,
+    script: str,
+    descripcion_envio: str,
+) -> None:
+    """
+    Prepara la escucha del PC, envia un script al robot y espera su confirmacion.
+    Este patron se repite en las tres fases del flujo completo.
+    """
+    log.info(f"Preparando escucha: {descripcion_escucha}")
+    hilo, errores = _servidor_en_hilo(puerto_escucha, descripcion_escucha)
+    time.sleep(1.0)
+
+    log.info(f"Enviando script: {descripcion_envio}")
+    enviar_script(ip_robot, puerto_robot, script)
+
+    log.info(f"Esperando confirmacion: {descripcion_escucha}")
+    hilo.join()
+    if errores:
+        raise errores[0]
+
+
 def ejecutar_flujo_completo(
     script_ur5_recoger: str,
     script_ur3_dibujar: str,
@@ -109,54 +134,38 @@ def ejecutar_flujo_completo(
     El orden es importante para que los robots no choquen ni actuen
     sobre la pieza al mismo tiempo:
 
-    Paso 1 - Preparamos el servidor para escuchar al UR5e (antes de mandarle nada)
-    Paso 2 - Mandamos al UR5e el script para recoger la pieza y llevarla a la zona compartida
-    Paso 3 - Esperamos a que el UR5e confirme que ha dejado la pieza
-    Paso 4 - Preparamos el servidor para escuchar al UR3e
-    Paso 5 - Mandamos al UR3e el script de dibujo
-    Paso 6 - Esperamos a que el UR3e confirme que ha terminado de dibujar
-    Paso 7 - Preparamos el servidor para escuchar al UR5e de nuevo
-    Paso 8 - Mandamos al UR5e el script para devolver la pieza a su sitio
-    Paso 9 - Esperamos a que el UR5e confirme que ha devuelto la pieza
+    1. El UR5e recoge la pieza y la lleva a la zona compartida.
+    2. El UR3e dibuja sobre la pieza.
+    3. El UR5e devuelve la pieza a su posicion original.
     """
-    log.info("PASO 1/9: preparando escucha para el aviso del UR5e")
-    hilo5, err5 = _servidor_en_hilo(PORT_UR5_LISTO_UR3, "UR5e -> PC: baldosa en DROP_ZONE")
-    time.sleep(1.0)
-
-    log.info("PASO 2/9: enviando script de recogida al UR5e")
-    enviar_script(ip_ur5e, port, script_ur5_recoger)
-
-    log.info("PASO 3/9: esperando confirmacion del UR5e")
-    hilo5.join()
-    if err5:
-        raise err5[0]
-
-    log.info("PASO 4/9: preparando escucha para el aviso del UR3e")
-    hilo3, err3 = _servidor_en_hilo(PORT_UR3_LISTO_UR5, "UR3e -> PC: dibujo terminado")
-    time.sleep(1.0)
-
-    log.info("PASO 5/9: enviando script de dibujo al UR3e")
-    enviar_script(ip_ur3e, port, script_ur3_dibujar)
-
-    log.info("PASO 6/9: esperando confirmacion del UR3e")
-    hilo3.join()
-    if err3:
-        raise err3[0]
-
-    log.info("PASO 7/9: preparando escucha para el aviso final del UR5e")
-    hilo5_fin, err5_fin = _servidor_en_hilo(
-        PORT_UR5_LISTO_UR3,
-        "UR5e -> PC: baldosa devuelta al origen"
+    log.info("FASE 1/3: UR5e recoge la baldosa y la deja en DROP_ZONE")
+    _enviar_y_esperar_confirmacion(
+        puerto_escucha=PORT_UR5_LISTO_UR3,
+        descripcion_escucha="UR5e -> PC: baldosa en DROP_ZONE",
+        ip_robot=ip_ur5e,
+        puerto_robot=port,
+        script=script_ur5_recoger,
+        descripcion_envio="recogida UR5e",
     )
-    time.sleep(1.0)
 
-    log.info("PASO 8/9: enviando script de devolucion al UR5e")
-    enviar_script(ip_ur5e, port, script_ur5_devolver)
+    log.info("FASE 2/3: UR3e dibuja sobre la baldosa")
+    _enviar_y_esperar_confirmacion(
+        puerto_escucha=PORT_UR3_LISTO_UR5,
+        descripcion_escucha="UR3e -> PC: dibujo terminado",
+        ip_robot=ip_ur3e,
+        puerto_robot=port,
+        script=script_ur3_dibujar,
+        descripcion_envio="dibujo UR3e",
+    )
 
-    log.info("PASO 9/9: esperando a que el UR5e termine de devolver la pieza")
-    hilo5_fin.join()
-
-    if err5_fin:
-        raise err5_fin[0]
+    log.info("FASE 3/3: UR5e devuelve la baldosa al origen")
+    _enviar_y_esperar_confirmacion(
+        puerto_escucha=PORT_UR5_LISTO_UR3,
+        descripcion_escucha="UR5e -> PC: baldosa devuelta al origen",
+        ip_robot=ip_ur5e,
+        puerto_robot=port,
+        script=script_ur5_devolver,
+        descripcion_envio="devolucion UR5e",
+    )
 
     log.info("Flujo completo terminado correctamente.")

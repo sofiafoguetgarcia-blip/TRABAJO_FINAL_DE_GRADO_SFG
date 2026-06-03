@@ -40,28 +40,26 @@ def cargar_imagen(path: str) -> np.ndarray:
 
 def preprocesar_imagen(img: np.ndarray) -> np.ndarray:
     """
-    Preprocesado simple para dibujo blanco sobre fondo negro.
-    Mantiene la flor completa.
+    Extrae bordes combinando Canny fino, Canny grueso y gradiente morfologico.
+    Esta combinacion mantiene detalles finos y ayuda a cerrar lineas del dibujo.
     """
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) # Convierte a escala de grises. Porq Canny funciona mejor en imágenes monocromáticas.
-    blur = cv2.GaussianBlur(gray, (3, 3), 0) # Aplica un desenfoque gaussiano para reducir ruido. El kernel de 3x3 es un buen compromiso entre suavizado y detalle.
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gray, (3, 3), 0)
 
-    edges_fino   = cv2.Canny(blur, CANNY_FINO_LOW,   CANNY_FINO_HIGH) # Detecta bordes finos con umbrales bajos.
-    edges_grueso = cv2.Canny(blur, CANNY_GRUESO_LOW,  CANNY_GRUESO_HIGH) # Detecta bordes gruesos con umbrales altos.
+    edges_fino = cv2.Canny(blur, CANNY_FINO_LOW, CANNY_FINO_HIGH)
+    edges_grueso = cv2.Canny(blur, CANNY_GRUESO_LOW, CANNY_GRUESO_HIGH)
 
-    kernel = np.ones((3, 3), np.uint8) # Kernel para operaciones morfológicas. Un bloque de 3x3 píxeles.
-    grad   = cv2.morphologyEx(gray, cv2.MORPH_GRADIENT, kernel) # Calcula el gradiente morfológico, que resalta los bordes como la diferencia entre dilatación y erosión. 
-    # Útil para detectar bordes que Canny podría perder.
-    
-    _, edges_grad = cv2.threshold(grad, 15, 255, cv2.THRESH_BINARY) # Convierte el gradiente a una imagen binaria. El umbral de 15 es un valor que resalta los bordes sin incluir demasiado ruido.
+    kernel = np.ones((3, 3), np.uint8)
+    grad = cv2.morphologyEx(gray, cv2.MORPH_GRADIENT, kernel)
+    _, edges_grad = cv2.threshold(grad, 15, 255, cv2.THRESH_BINARY)
 
-    edges = cv2.bitwise_or(edges_fino,  edges_grueso) # Combina los bordes finos y gruesos usando una operación OR bit a bit. Así se conservan ambos tipos de bordes.
-    edges = cv2.bitwise_or(edges,       edges_grad) # Combina el resultado anterior con el gradiente morfológico para incluir bordes adicionales que Canny podría haber pasado por alto.
-    edges = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel, iterations=1) # Aplica una operación de cierre (dilatación seguida de erosión) para cerrar pequeños huecos en los bordes y conectar segmentos cercanos. 
-    # Ayuda a formar contornos más continuos.
+    edges = cv2.bitwise_or(edges_fino, edges_grueso)
+    edges = cv2.bitwise_or(edges, edges_grad)
+    edges = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel, iterations=1)
 
-    log.debug("Preprocesado completado.") 
+    log.debug("Preprocesado completado.")
     return edges
+
 
 def guardar_debug(edges: np.ndarray, path: str = "debug_edges.png") -> None:
     """

@@ -63,6 +63,33 @@ def _pose_to_urscript(pose) -> str:
     return "p[" + ", ".join(f"{v:.5f}" for v in p) + "]"
 
 
+def _modo_ventosa_texto() -> str:
+    """Devuelve una descripcion breve del modo de ventosa para los logs URScript."""
+    if SIMULAR_VENTOSA:
+        return "SIMULACION"
+    return f"REAL ({VENTOSA_TIPO_SALIDA}, pin={VENTOSA_DO_PIN})"
+
+
+def _parametros_pick_ur5(x_pieza: float, y_pieza: float) -> Tuple[float, float, float, float, float]:
+    """Normaliza coordenadas de pieza y orientacion de recogida del UR5e."""
+    xp = float(x_pieza)
+    yp = float(y_pieza)
+    rx_pick = float(UR5E_PICK_ORIENTATION[0])
+    ry_pick = float(UR5E_PICK_ORIENTATION[1])
+    rz_pick = float(UR5E_PICK_ORIENTATION[2])
+    return xp, yp, rx_pick, ry_pick, rz_pick
+
+
+def _pose_pick_ur5(z_expr: str = None) -> str:
+    """Pose URScript del UR5e sobre la pieza usando x_pick, y_pick y orientacion fija."""
+    z = z_expr if z_expr is not None else f"{Z_APROX_UR5:.5f}"
+    return f"p[x_pick, y_pick, {z}, rx_pick, ry_pick, rz_pick]"
+
+
+def _pose_dibujo_ur3(x: float, y: float, z_expr: str = "z_dibujo") -> str:
+    """Pose URScript del UR3e para un punto del dibujo respecto al centro x0, y0."""
+    return f"p[x0+{x:.5f}, y0+{y:.5f}, {z_expr}, rx, ry, rz]"
+
 def _socket_aviso_pc(port: int, nombre: str, canal: str) -> List[str]:
     """
     Genera el bloque URScript para que el robot avise al PC de que ha terminado.
@@ -236,13 +263,9 @@ def generar_script_ur5e_recoger(
     """
     _, dz5 = obtener_drop_zones()
     dzx, dzy, dzz, drx_drop, dry_drop, drz_drop = [float(v) for v in dz5]
-    xp, yp = float(x_pieza), float(y_pieza)
+    xp, yp, rx_pick, ry_pick, rz_pick = _parametros_pick_ur5(x_pieza, y_pieza)
 
-    rx_pick = float(UR5E_PICK_ORIENTATION[0])
-    ry_pick = float(UR5E_PICK_ORIENTATION[1])
-    rz_pick = float(UR5E_PICK_ORIENTATION[2])
-
-    modo_ventosa = "SIMULACION" if SIMULAR_VENTOSA else f"REAL ({VENTOSA_TIPO_SALIDA}, pin={VENTOSA_DO_PIN})"
+    modo_ventosa = _modo_ventosa_texto()
 
     L = [
         "def ur5e_recoger_baldosa():",
@@ -275,7 +298,7 @@ def generar_script_ur5e_recoger(
     L.extend(_ir_home_ur5())
 
     L += [
-        f"  movej(p[x_pick, y_pick, {Z_APROX_UR5:.5f}, rx_pick, ry_pick, rz_pick], a={A_RAPIDO}, v={V_APROX})",
+        f"  movej({_pose_pick_ur5()}, a={A_RAPIDO}, v={V_APROX})",
         "  sleep(0.3)",
     ]
 
@@ -286,7 +309,7 @@ def generar_script_ur5e_recoger(
     L += [
         "",
         "  # Paso 3: subir por el mismo camino que hemos bajado",
-        f"  movel(p[x_pick, y_pick, {Z_APROX_UR5:.5f}, rx_pick, ry_pick, rz_pick], a={A_LENTO}, v={V_APROX})",
+        f"  movel({_pose_pick_ur5()}, a={A_LENTO}, v={V_APROX})",
         "  sleep(0.2)",
     ]
 
@@ -384,20 +407,20 @@ def generar_script_ur3e_dibujar(trayectorias: List[Trayectoria]) -> str:
             f"  # Trazo {idx + 1} de {total}",
             f'  textmsg("UR3e: trazo {idx + 1} de {total}")',
             # Ir al inicio del trazo a altura segura
-            f"  movej(p[x0+{x_ini:.5f}, y0+{y_ini:.5f}, z_dibujo+{Z_SUBIDA:.5f}, rx, ry, rz], a={A_HOME}, v={V_SUBIDA})",
+            f"  movej({_pose_dibujo_ur3(x_ini, y_ini, f'z_dibujo+{Z_SUBIDA:.5f}')}, a={A_HOME}, v={V_SUBIDA})",
             # Bajar hasta el papel
-            f"  movel(p[x0+{x_ini:.5f}, y0+{y_ini:.5f}, z_dibujo, rx, ry, rz], a={A_DIBUJO}, v={V_DIBUJO})",
+            f"  movel({_pose_dibujo_ur3(x_ini, y_ini)}, a={A_DIBUJO}, v={V_DIBUJO})",
         ]
 
         # Recorrer el resto de puntos del trazo
         for x, y in tray[1:]:
             L.append(
-                f"  movel(p[x0+{x:.5f}, y0+{y:.5f}, z_dibujo, rx, ry, rz], a={A_DIBUJO}, v={V_DIBUJO}, r=0.001)"
+                f"  movel({_pose_dibujo_ur3(x, y)}, a={A_DIBUJO}, v={V_DIBUJO}, r=0.001)"
             )
 
         # Levantar el lapiz al terminar el trazo
         L.append(
-            f"  movel(p[x0+{x_fin:.5f}, y0+{y_fin:.5f}, z_dibujo+{Z_SUBIDA:.5f}, rx, ry, rz], a={A_HOME}, v={V_SUBIDA})"
+            f"  movel({_pose_dibujo_ur3(x_fin, y_fin, f'z_dibujo+{Z_SUBIDA:.5f}')}, a={A_HOME}, v={V_SUBIDA})"
         )
 
     L += [
@@ -440,13 +463,9 @@ def generar_script_ur5e_devolver(
     """
     _, dz5 = obtener_drop_zones()
     dzx, dzy, dzz, drx_drop, dry_drop, drz_drop = [float(v) for v in dz5]
-    xp, yp = float(x_pieza), float(y_pieza)
+    xp, yp, rx_pick, ry_pick, rz_pick = _parametros_pick_ur5(x_pieza, y_pieza)
 
-    rx_pick = float(UR5E_PICK_ORIENTATION[0])
-    ry_pick = float(UR5E_PICK_ORIENTATION[1])
-    rz_pick = float(UR5E_PICK_ORIENTATION[2])
-
-    modo_ventosa = "SIMULACION" if SIMULAR_VENTOSA else f"REAL ({VENTOSA_TIPO_SALIDA}, pin={VENTOSA_DO_PIN})"
+    modo_ventosa = _modo_ventosa_texto()
 
     L = [
         "def ur5e_devolver_baldosa():",
@@ -488,7 +507,7 @@ def generar_script_ur5e_devolver(
         "",
         "  # Paso 3: ir a la posicion original de la pieza y depositarla",
         f'  textmsg("UR5e DEVOLVER TARGET JSON x={xp:.5f}, y={yp:.5f}")',
-        f"  movej(p[x_pick, y_pick, {Z_APROX_UR5:.5f}, rx_pick, ry_pick, rz_pick], a={A_RAPIDO}, v={V_TRASLADO})",
+        f"  movej({_pose_pick_ur5()}, a={A_RAPIDO}, v={V_TRASLADO})",
         "  sleep(0.3)",
     ]
 
@@ -498,7 +517,7 @@ def generar_script_ur5e_devolver(
     L += [
         "",
         "  # Paso 4: retirarse y volver al HOME",
-        f"  movel(p[x_pick, y_pick, {Z_APROX_UR5:.5f}, rx_pick, ry_pick, rz_pick], a={A_LENTO}, v={V_APROX})",
+        f"  movel({_pose_pick_ur5()}, a={A_LENTO}, v={V_APROX})",
         "  sleep(0.2)",
     ]
 

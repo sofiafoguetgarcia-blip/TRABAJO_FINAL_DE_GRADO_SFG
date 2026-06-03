@@ -25,6 +25,8 @@ import argparse
 import logging
 import sys
 import json
+import os
+from typing import Any, Dict, List, Tuple
 
 from config import (
     UR3E_IP,
@@ -58,6 +60,7 @@ log = logging.getLogger(__name__)
 DEFAULT_DIBUJO = r"..\..\codigosPythonUR\imagenes\flor_simple.jpg"
 DEFAULT_JSON = r"..\..\codigosPythonUR\dibujo_colab\v13\Robot\resultados\datos_robot.json"
 
+
 def parse_args():
     p = argparse.ArgumentParser(
         description="Demo UR5e + UR3e usando JSON directo de vision"
@@ -87,12 +90,8 @@ def parse_args():
     return p.parse_args()
 
 
-def cargar_lista_piezas(path_json: str, pieza_arg: int):
-    """
-    Carga la lista de piezas del JSON y filtra segun lo que se haya pedido.
-    Si pieza_arg es 0 se devuelven todas. Si es un numero concreto,
-    se busca esa pieza y se lanza un error si no existe.
-    """
+def cargar_json_vision(path_json: str) -> Dict[str, Any]:
+    """Carga el JSON de vision una sola vez y valida que contenga piezas."""
     with open(path_json, "r", encoding="utf-8") as f:
         data = json.load(f)
 
@@ -100,6 +99,14 @@ def cargar_lista_piezas(path_json: str, pieza_arg: int):
     if not piezas:
         raise ValueError("El JSON no contiene piezas.")
 
+    return data
+
+
+def seleccionar_piezas(piezas: List[Dict[str, Any]], pieza_arg: int) -> List[Dict[str, Any]]:
+    """
+    Filtra la lista de piezas segun lo indicado por linea de comandos.
+    Si pieza_arg es 0, se procesan todas las piezas del JSON.
+    """
     if pieza_arg == 0:
         return piezas
 
@@ -111,6 +118,115 @@ def cargar_lista_piezas(path_json: str, pieza_arg: int):
     return seleccion
 
 
+def cargar_y_preprocesar_dibujo(path_dibujo: str, path_debug_edges: str):
+    """Carga la imagen del dibujo, extrae sus bordes y guarda la imagen de debug."""
+    img = cargar_imagen(path_dibujo)
+    edges = preprocesar_imagen(img)
+    guardar_debug(edges, path_debug_edges)
+    return img, edges
+
+
+def generar_scripts_pieza(
+    numero: int,
+    x_baldosa_ur5: float,
+    y_baldosa_ur5: float,
+    angulo_baldosa: float,
+    trayectorias,
+) -> Tuple[str, str, str]:
+    """Genera y guarda los tres scripts URScript de una pieza."""
+    script_recoger = generar_script_ur5e_recoger(
+        x_baldosa_ur5,
+        y_baldosa_ur5,
+        angulo_baldosa,
+    )
+    script_dibujar = generar_script_ur3e_dibujar(trayectorias)
+    script_devolver = generar_script_ur5e_devolver(
+        x_baldosa_ur5,
+        y_baldosa_ur5,
+    )
+
+    os.makedirs("Resultados", exist_ok=True)
+
+    guardar_script(
+        script_recoger,
+        os.path.join("Resultados", f"pieza_{numero}_ur5_recoger.urscript")
+    )
+
+    guardar_script(
+        script_dibujar,
+        os.path.join("Resultados", f"pieza_{numero}_ur3_dibujar.urscript")
+    )
+
+    guardar_script(
+        script_devolver,
+        os.path.join("Resultados", f"pieza_{numero}_ur5_devolver.urscript")
+    )
+
+    return script_recoger, script_dibujar, script_devolver
+
+
+def procesar_pieza(pieza: Dict[str, Any], args, img, edges) -> None:
+    """
+    Procesa una pieza completa: lectura de datos, calculo de escala,
+    extraccion de trayectorias, generacion de scripts y ejecucion opcional.
+    """
+    numero = int(pieza["numero"])
+
+    log.info("")
+    log.info("=" * 60)
+    log.info(f"             PIEZA {numero}")
+    log.info("=" * 60)
+
+    det = cargar_deteccion_json(args.json, numero_pieza=numero)
+
+    x_baldosa_ur5 = det.x_robot
+    y_baldosa_ur5 = det.y_robot
+    angulo_baldosa = det.angulo_deg
+
+    log.warning(
+        f"SE VA A ENVIAR AL UR5e EXACTAMENTE: "
+        f"x={x_baldosa_ur5:.5f} m, y={y_baldosa_ur5:.5f} m"
+    )
+
+    ancho_mm = float(pieza.get("ancho_mm", 0))
+    alto_mm = float(pieza.get("alto_mm", 0))
+    ancho_dibujo_m = calcular_ancho_dibujo_por_baldosa(ancho_mm, alto_mm)
+
+    log.info(
+        f"Baldosa {numero}: {ancho_mm:.1f} x {alto_mm:.1f} mm "
+        f"-> dibujo: {ancho_dibujo_m*1000:.1f} mm"
+    )
+
+    trayectorias = extraer_trayectorias(
+        edges,
+        img.shape,
+        ancho_dibujo_m=ancho_dibujo_m,
+    )
+
+    script_recoger, script_dibujar, script_devolver = generar_scripts_pieza(
+        numero=numero,
+        x_baldosa_ur5=x_baldosa_ur5,
+        y_baldosa_ur5=y_baldosa_ur5,
+        angulo_baldosa=angulo_baldosa,
+        trayectorias=trayectorias,
+    )
+
+    if args.dry_run:
+        log.info(f"Dry-run pieza {numero}: scripts generados, no se envian")
+        return
+
+    ejecutar_flujo_completo(
+        script_ur5_recoger=script_recoger,
+        script_ur3_dibujar=script_dibujar,
+        script_ur5_devolver=script_devolver,
+        ip_ur5e=args.ip5,
+        ip_ur3e=args.ip3,
+        port=args.port,
+    )
+
+    log.info(f"PIEZA {numero} TERMINADA")
+
+
 def main():
     args = parse_args()
 
@@ -118,107 +234,26 @@ def main():
     log.info(" DEMO UR5e + UR3e CON JSON DIRECTO ")
     log.info("=" * 70)
 
-    # Cargamos el JSON y decidimos que piezas procesar
     try:
-        with open(args.json, "r", encoding="utf-8") as f:
-            datos_json = json.load(f)
-        todas_las_piezas = datos_json.get("piezas", [])
-        piezas_a_procesar = cargar_lista_piezas(args.json, args.pieza)
+        datos_json = cargar_json_vision(args.json)
+        todas_las_piezas = datos_json["piezas"]
+        piezas_a_procesar = seleccionar_piezas(todas_las_piezas, args.pieza)
     except Exception as e:
         log.error(f"Error leyendo JSON: {e}")
         sys.exit(1)
 
-    # Mostramos la tabla de escala para TODAS las piezas del JSON
-    # antes de empezar, para que sea facil detectar si hay algo raro
     log.info(resumen_escala(todas_las_piezas))
     log.info(f"Piezas a procesar: {[p.get('numero') for p in piezas_a_procesar]}")
 
-    # Cargamos y preprocesamos la imagen del dibujo una sola vez.
-    # La misma imagen se usa para todas las piezas (escalada a cada baldosa).
     try:
-        img = cargar_imagen(args.dibujo)
-        edges = preprocesar_imagen(img)
-        guardar_debug(edges, args.debug_edges)
+        img, edges = cargar_y_preprocesar_dibujo(args.dibujo, args.debug_edges)
     except Exception as e:
         log.error(f"Error procesando dibujo: {e}")
         sys.exit(1)
 
-    # Procesamos cada pieza en orden
     for pieza in piezas_a_procesar:
         try:
-            numero = int(pieza["numero"])
-
-            log.info("")
-            log.info("=" * 60)
-            log.info(f"             PIEZA {numero}")
-            log.info("=" * 60)
-
-            # Leemos los datos de esta pieza del JSON
-            det = cargar_deteccion_json(args.json, numero_pieza=numero)
-
-            x_baldosa_ur5 = det.x_robot
-            y_baldosa_ur5 = det.y_robot
-            angulo_baldosa = det.angulo_deg
-
-            log.warning(
-                f"SE VA A ENVIAR AL UR5e EXACTAMENTE: "
-                f"x={x_baldosa_ur5:.5f} m, y={y_baldosa_ur5:.5f} m"
-            )
-
-            # Calculamos el tamano del dibujo para esta baldosa concreta
-            ancho_mm = float(pieza.get("ancho_mm", 0))
-            alto_mm = float(pieza.get("alto_mm", 0))
-            ancho_dibujo_m = calcular_ancho_dibujo_por_baldosa(ancho_mm, alto_mm)
-
-            log.info(
-                f"Baldosa {numero}: {ancho_mm:.1f} x {alto_mm:.1f} mm "
-                f"-> dibujo: {ancho_dibujo_m*1000:.1f} mm"
-            )
-
-            # Extraemos las trayectorias de la imagen escaladas al tamano de esta baldosa
-            trayectorias = extraer_trayectorias(
-                edges,
-                img.shape,
-                ancho_dibujo_m=ancho_dibujo_m
-            )
-
-            # Generamos los tres scripts
-            script_recoger = generar_script_ur5e_recoger(
-                x_baldosa_ur5,
-                y_baldosa_ur5,
-                angulo_baldosa
-            )
-            script_dibujar = generar_script_ur3e_dibujar(trayectorias)
-            script_devolver = generar_script_ur5e_devolver(
-                x_baldosa_ur5,
-                y_baldosa_ur5
-            )
-
-            # Guardamos los scripts en disco para poder revisarlos
-            path_recoger = f"pieza_{numero}_ur5_recoger.urscript"
-            path_dibujar = f"pieza_{numero}_ur3_dibujar.urscript"
-            path_devolver = f"pieza_{numero}_ur5_devolver.urscript"
-
-            guardar_script(script_recoger, path_recoger)
-            guardar_script(script_dibujar, path_dibujar)
-            guardar_script(script_devolver, path_devolver)
-
-            if args.dry_run:
-                log.info(f"Dry-run pieza {numero}: scripts generados, no se envian")
-                continue
-
-            # Enviamos los scripts a los robots y esperamos que terminen
-            ejecutar_flujo_completo(
-                script_ur5_recoger=script_recoger,
-                script_ur3_dibujar=script_dibujar,
-                script_ur5_devolver=script_devolver,
-                ip_ur5e=args.ip5,
-                ip_ur3e=args.ip3,
-                port=args.port,
-            )
-
-            log.info(f"PIEZA {numero} TERMINADA")
-
+            procesar_pieza(pieza, args, img, edges)
         except Exception as e:
             log.error(f"Error en pieza {pieza}: {e}")
             continue  # si falla una pieza, intentamos con la siguiente
