@@ -101,11 +101,11 @@ A_HOME = 0.030       # aceleracion para ir al home
 # -----------------------------------------------------------------------------
 # Velocidades y aceleraciones del UR3e (movimientos de dibujo)
 # -----------------------------------------------------------------------------
-V_BAJA_UR3 = 0.006   # velocidad al bajar buscando el papel
+V_BAJA_UR3 = 0.006   # velocidad al bajar buscando la pieza
 V_DIBUJO = 0.010     # velocidad mientras dibuja (lento para que quede bien)
 V_SUBIDA = 0.020     # velocidad al levantar el lapiz entre trazos
 A_DIBUJO = 0.004     # aceleracion durante el dibujo
-Z_PAPEL = 0.0010     # margen que se deja sobre el papel una vez detectado el contacto
+Z_PAPEL = 0.0010     # margen que se deja sobre la pieza una vez detectado el contacto
 Z_SUBIDA = 0.025     # cuanto sube el lapiz entre tramo y tramo
 F_UMBRAL_UR3 = 1.2   # fuerza en N para detectar el papel
 
