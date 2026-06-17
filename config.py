@@ -72,7 +72,7 @@ SIMULAR_VENTOSA = False
 #   "DO_CONTROLADOR"  ->  set_digital_out(pin, estado)
 #                         Salida del controlador (conector trasero del armario).
 #   "TOOL_DO"         ->  set_tool_digital_out(pin, estado)
-#                         Salida digital del conector de herramienta en la muneca.
+#                         Salida digital del conector de herramienta.
 VENTOSA_TIPO_SALIDA = "DO_CONTROLADOR"
 
 # Numero de pin segun el cableado:
