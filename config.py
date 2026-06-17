@@ -8,8 +8,7 @@ algo (una IP, una velocidad, un pin), se toca aqui y ya esta.
 Nota importante sobre las coordenadas:
 El JSON de vision ya da robot_x y robot_y en coordenadas del UR5e,
 en milimetros. El modulo vision.py simplemente divide entre 1000
-para pasar a metros. No hay ningun calculo extra ni offset de pieza.
-El angulo que da la camara NO se usa para girar la muneca.
+para pasar a metros.
 """
 
 # -----------------------------------------------------------------------------
