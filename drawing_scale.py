@@ -40,7 +40,6 @@ def calcular_ancho_dibujo_por_baldosa(
     del JSON) y calcula cuanto espacio puede usar el robot para dibujar.
 
     El parametro escala es opcional: si no se pasa, se usa el valor de config.py.
-    Esto permite ajustar el tamano desde fuera si hace falta en alguna prueba.
 
     El resultado siempre queda dentro de [MIN_DRAWING_WIDTH_M, MAX_DRAWING_WIDTH_M].
     """
