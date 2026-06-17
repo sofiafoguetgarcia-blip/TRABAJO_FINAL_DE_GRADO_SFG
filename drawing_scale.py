@@ -12,10 +12,6 @@ que el dibujo no llegue justo al borde.
 
 Tambien hay unos limites minimo y maximo por seguridad: si por alguna
 razon el calculo da un valor raro, se ajusta dentro del rango seguro.
-
-Uso tipico:
-    from drawing_scale import calcular_ancho_dibujo_por_baldosa
-    ancho_m = calcular_ancho_dibujo_por_baldosa(ancho_mm=140.98, alto_mm=141.96)
 """
 
 import logging
