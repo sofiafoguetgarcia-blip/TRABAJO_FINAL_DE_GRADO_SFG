@@ -27,7 +27,7 @@ def cargar_imagen(path: str) -> np.ndarray:
     """
     Carga la imagen del dibujo desde disco.
     Si el archivo no existe o no se puede leer, lanza un error claro
-    en lugar de fallar de forma misteriosa mas adelante.
+    en lugar de fallar.
     """
     if not os.path.isfile(path):
         raise FileNotFoundError(f"No existe la imagen de dibujo: {path}")
