@@ -56,7 +56,7 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 
-# Rutas por defecto. Se pueden sobreescribir por linea de comandos.
+# Rutas por defecto. Pueden ser sobreescritas por linea de comandos.
 DEFAULT_DIBUJO = r"..\..\codigosPythonUR\imagenes\flor_simple.jpg"
 DEFAULT_JSON = r"..\..\codigosPythonUR\dibujo_colab\v13\Robot\resultados\datos_robot.json"
 
