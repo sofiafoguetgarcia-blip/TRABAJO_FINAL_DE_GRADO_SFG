@@ -47,8 +47,6 @@ def extraer_trayectorias(
     img_h, img_w = img_shape[:2]
 
     # La escala convierte pixeles a metros.
-    # Para imagenes de flores usamos el ancho directamente.
-    # (Para otros dibujos como el oso se usaria ancho*2, segun el aspecto del dibujo)
     escala = ancho_dibujo_m / float(img_w)
 
     # Buscamos todos los contornos de la imagen
