@@ -105,7 +105,6 @@ def _enviar_y_esperar_confirmacion(
 ) -> None:
     """
     Prepara la escucha del PC, envia un script al robot y espera su confirmacion.
-    Este patron se repite en las tres fases del flujo completo.
     """
     log.info(f"Preparando escucha: {descripcion_escucha}")
     hilo, errores = _servidor_en_hilo(puerto_escucha, descripcion_escucha)
