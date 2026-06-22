@@ -31,7 +31,7 @@ log = logging.getLogger(__name__)
 class DeteccionBaldosa:
     """
     Guarda todos los datos de una baldosa detectada por vision.
-    Los campos x_robot e y_robot ya estan en metros, listos para el robot.
+    Los campos x_robot e y_robot estan en metros.
     """
     numero: int
     x_robot: float
@@ -87,7 +87,7 @@ def _campo_float(pieza: Dict[str, Any], *nombres: str) -> float:
     Busca el primer nombre de campo que exista en el diccionario y lo devuelve
     como float. Si no encuentra ninguno, lanza un error explicando cuales buscaba.
     Esto permite que el JSON use distintos nombres para el mismo dato
-    (por ejemplo 'robot_x', 'x_robot' o simplemente 'x').
+    ( 'robot_x', 'x_robot' o simplemente 'x').
     """
     for nombre in nombres:
         if nombre in pieza:
@@ -104,15 +104,14 @@ def _pieza_a_deteccion(
 ) -> DeteccionBaldosa:
     """
     Convierte un diccionario de pieza del JSON en un objeto DeteccionBaldosa.
-    La conversion de milimetros a metros es lo unico que se hace aqui.
+    Se realiza la conversion de milimetros a metros.
     """
     if "numero" not in pieza:
         raise ValueError("Falta el campo 'numero' en una pieza del JSON.")
 
     numero = int(pieza["numero"])
 
-    # Leemos las coordenadas y dimensiones. Se admiten varios nombres de campo
-    # por si el JSON viene de distintas versiones del sistema de vision.
+    # Leemos las coordenadas y dimensiones. Se admiten diferentes nombres por si se modifica el json
     robot_x_mm = _campo_float(pieza, "robot_x", "x_robot", "x")
     robot_y_mm = _campo_float(pieza, "robot_y", "y_robot", "y")
     ancho_mm = _campo_float(pieza, "ancho_mm", "width_mm", "ancho")
@@ -124,7 +123,7 @@ def _pieza_a_deteccion(
     y_robot_m = robot_y_mm / 1000.0
 
     log.warning(
-        f"PIEZA {numero} | SE ENVIA JSON TAL CUAL | "
+        f"PIEZA {numero} | SE ENVIA JSON | "
         f"robot_x={robot_x_mm:.2f} mm -> x={x_robot_m:.5f} m | "
         f"robot_y={robot_y_mm:.2f} mm -> y={y_robot_m:.5f} m | "
         f"angulo leido pero NO usado={angulo_deg:.2f}°"
@@ -150,8 +149,8 @@ def cargar_deteccion_json(
     Funcion principal del modulo. Recibe la ruta al JSON y el numero de pieza
     que queremos procesar, y devuelve un objeto DeteccionBaldosa listo para usar.
 
-    Si numero_pieza es None, se elige automaticamente la pieza mas grande
-    (la de mayor area en mm2). Esto puede ser util para pruebas rapidas.
+    Si numero_pieza es None, se elige la pieza mas grande
+    (la de mayor area).
     """
     data = _leer_json(path_json)
     piezas: List[Dict[str, Any]] = data["piezas"]
