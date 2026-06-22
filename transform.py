@@ -12,10 +12,6 @@ para el UR5e esta "a la derecha" para el UR3e esta "a la izquierda".
 Para hacer la conversion se usa la zona compartida (DROP_ZONE) como
 punto de referencia comun, ya que ambos robots conocen su posicion
 respecto a ella.
-
-Advertencia: esta conversion es aproximada y sirve para desplazamientos
-relativos sencillos. Para una precision alta habria que hacer una
-calibracion real con varios puntos de referencia.
 """
 
 from __future__ import annotations
@@ -24,19 +20,17 @@ from typing import Iterable, List, Tuple
 from config import DROP_ZONE_UR5E, DROP_ZONE_UR3E
 
 
-# Como los robots estan enfrentados, el eje X se mantiene igual
+# robots enfrentados, el eje X se mantiene igual
 # pero el eje Y hay que invertirlo.
-# Ajustar estos signos si la configuracion fisica de las mesas cambia.
 AXIS_SIGN_X = 1.0
 AXIS_SIGN_Y = -1.0
 
-# La Z no se transforma: cada robot detecta la superficie de la mesa
-# por fuerza, asi que no necesita saber la altura del otro.
+# La Z no se transforma: cada robot detecta la superficie por fuerza
 COPY_Z_OFFSET = False
 
 
 def _validar_pose(pose: Iterable[float], nombre: str) -> List[float]:
-    """Comprueba que la pose tiene exactamente 6 valores [x, y, z, rx, ry, rz]."""
+    """Comprueba que la pose tiene 6 valores [x, y, z, rx, ry, rz]."""
     p = [float(v) for v in pose]
     if len(p) != 6:
         raise ValueError(f"{nombre} debe tener 6 valores: [x, y, z, rx, ry, rz]")
